@@ -37,7 +37,7 @@ class User:
     def find(self):
         with GraphDatabase.driver(URI, auth=AUTH) as driver:
             driver.verify_connectivity()
-            query = """MATCH (u:User {username: $username}) RETURN u.username AS user"""
+            query = """MATCH (u:User {username: $username}) RETURN u.username AS user, u.password AS password"""
             records,  summary, keys =driver.execute_query(
                 query,
                 {"username": self.username},
@@ -63,6 +63,22 @@ class User:
             driver.close()
             return True
         return False
+
+    def verify_password(self, password):
+        user = self.find()
+        print(f"I am {user}")
+        if user.empty:
+            return False
+        return bcrypt.verify(password, user.iloc[0][1])
+
+    def create_user_constraint(self):
+        with GraphDatabase.driver(URI, auth=AUTH) as driver:
+            driver.verify_connectivity()
+        query = """CREATE CONSTRAINT  IF NOT EXISTS FOR (n:User) REQUIRE n.username IS UNIQUE"""
+        driver.execute_query(query)
+        return True
+        driver.close()
+
     def create_user_constraint(self):
         with GraphDatabase.driver(URI, auth=AUTH) as driver:
             driver.verify_connectivity()
