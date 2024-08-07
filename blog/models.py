@@ -81,43 +81,32 @@ class User:
 
         with GraphDatabase.driver(URI, auth=AUTH) as driver:
             driver.verify_connectivity()
-        query = """ MERGE (p:Post {id: $id, title:$title, text:$text, timestamp:$timestamp, date:$date}) RETURN p.id, p.title, p.text, p.timestamp, p.date"""
-        records, summary, keys=driver.execute_query(
+        query = """MERGE (p:Post {id: $id, title:$title, text:$text, timestamp:$timestamp, date:$date}) 
+        RETURN p.id, 
+        p.title, p.text, p.timestamp, p.date """
+        records,summary,keys=driver.execute_query(
             query,
             {"id": str(uuid.uuid4()), "title": title, "text": text, "timestamp":int(today.strftime("%s")),"date":today.strftime("%F")},
             database_="users",
         )
         post=pd.DataFrame(records)
-        driver.close()
-
-
-        print(f"now let's query merge USER{user.iloc[0][0]} and then POST{post.iloc[0][0]}")
-
-        with GraphDatabase.driver(URI, auth=AUTH) as driver:
-            driver.verify_connectivity()
-
         query = """MATCH(u:User {username: $username}),
                         (p:Post)
                        MERGE (u)-[r:PUBLISH]->(p)"""
-        records, summary, keys=driver.execute_query(
+        driver.execute_query(
                      query, {"username":user.iloc[0][0]}, database_="users")
 
-        print(f"this is after merging records after rel {records}")
+        tags = [x.strip() for x in tags.lower().split(",")]
+        tags = set(tags)
+        for tag in tags:
+            query = """MATCH (u:User{username:$username}),(p:Post{id:$id})
+                      MERGE(t:Tag{name:$name})-[:TAGGED]->(p)"""
+            driver.execute_query(query,{"username":self.username,"id":post.iloc[0][0],"name":tag},
+                                 database_="users")
 
 
 
 
-
-        # today_node = calendar.date(today.year, today.month, today.day).day
-        # graph.create(Relationship(post, "ON", today_node))
-        #
-        # tags = [x.strip() for x in tags.lower().split(",")]
-        # tags = set(tags)
-        #
-        # for tag in tags:
-        #     t = graph.merge_one("Tag", "name", tag)
-        #     rel = Relationship(t, "TAGGED", post)
-        #     graph.create(rel)
 
 # user1 = User("Hiba")
 # user1.register("YES")
